@@ -55,7 +55,7 @@ function initCanvasTex(){
 	canvas = document.createElement("canvas");
 	canvas.width = w;
 	canvas.height = h;
-	sliceSize = 25;
+	sliceSize = 50;
 	// document.body.appendChild(canvas);
 	// canvas.style['z-index'] = -1;
 	ctx = canvas.getContext("2d");
@@ -63,13 +63,14 @@ function initCanvasTex(){
 	image.onload = function (){
 		ctx.drawImage(image, 0, 0);
 	}
-	// image.src = "img/rb-grid.jpg";
-	image.src = "img/rgblcd.png";
+	image.src = "img/rgblcd.jpg";
 
 
     tex = new THREE.Texture(canvas);
     tex.needsUpdate = true;
     camTex = tex;
+	// window.setInterval(canvasDraw, 200);
+
     initFrameDifferencing();
 
 
@@ -89,6 +90,7 @@ function initCameraTex(){
 	        tex = new THREE.Texture(video);
 	        tex.needsUpdate = true;
 	        camTex = tex;
+
 	        initFrameDifferencing();
         }, function(error){
 		   console.log("Failed to get a stream due to", error);
@@ -239,7 +241,7 @@ function canvasDraw(){
 }
 function draw(){
 	time+=0.01;
-	canvasDraw();
+	// canvasDraw();
     camTex.needsUpdate = true;
 
     // expand(1.01);
