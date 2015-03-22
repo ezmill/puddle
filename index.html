@@ -1,14 +1,28 @@
 <html>
 <head>
-	<title>iridescent puddle | ezra miller</title>
+	<title>Iridescent Puddle | Ezra Miller</title>
+  <link href='http://fonts.googleapis.com/css?family=Cardo:400italic' rel='stylesheet' type='text/css'>
 	<style>
 		body{
 			margin: 0;
       /*cursor:none;*/
 		}
+    a{
+      font-family: "Cardo";
+      font-style: italic;
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      margin: 10px;
+      font-size: 20px;
+      border-bottom: 1px solid white;
+      text-decoration: none;
+      color: white;
+    }
 	</style>
 </head>
 <body>
+<a href="http://ezramiller.biz/">Ezra Miller</a>
 <script id="fs" type="x-fragment/x-shader">
 uniform sampler2D texture; 
 uniform float time; // seconds
@@ -431,7 +445,7 @@ void main(){
   vec4 tex0 = texture2D(texture, vUv);
   vec3 hsv = rgb2hsv(tex0.rgb);
 
-  hsv.r += 0.0075;
+  hsv.r += 0.01;
   hsv.r = mod(hsv.r, 1.0);
   hsv.g *= 1.0001;
   // hsv.g = mod(hsv.g, 1.0);
@@ -758,5 +772,15 @@ void main(){
 <script src="OrbitControls.js"></script>
 <script src="dat.gui.min.js"></script>
 <script src="main.js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-61070704-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
 </body>
 </html>
