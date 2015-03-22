@@ -1,6 +1,6 @@
 <html>
 <head>
-	<title>Iridescent Puddle | Ezra Miller</title>
+	<title>Iridescent Puddle</title>
   <meta property="og:image" content="http://iridescentpuddle.com/fb.jpg">
   <meta property="og:title" content="Iridescent Puddle">
   <meta property="og:description" content="Iridescent Puddle by Ezra Miller. Made with WebGL.">
@@ -8,10 +8,10 @@
   <meta property="author" content="Ezra Miller">
   <link href='http://fonts.googleapis.com/css?family=Cardo:400italic' rel='stylesheet' type='text/css'>
 	<style>
-		body{
+		body {
 			margin: 0;
 		}
-    a{
+    .info {
       font-family: "Cardo";
       font-style: italic;
       position: absolute;
@@ -19,16 +19,29 @@
       right: 0;
       margin: 15px;
       font-size: 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.5);
-      text-decoration: none;
       color: rgba(255,255,255,0.5);
+    }
+    a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.5);
+
+    }
+    a:hover {
+      -webkit-transition: all 500ms ease;
+      -moz-transition: all 500ms ease;
+      -ms-transition: all 500ms ease;
+      -o-transition: all 500ms ease;
+      transition: all 500ms ease;
+      border-bottom: 1px solid rgba(255,255,255,1.0);
+      color: rgba(255,255,255,1.0);
     }
 	</style>
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
 <body>
-<a target="_blank" href="http://ezramiller.biz/">Ezra Miller</a>
+<div class="info">by <a target="_blank" href="http://ezramiller.biz/">Ezra Miller</a></div>
 <script id="fs" type="x-fragment/x-shader">
 uniform sampler2D texture; 
 uniform float time; // seconds
