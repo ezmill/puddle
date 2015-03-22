@@ -125,7 +125,9 @@ function initFrameDifferencing(){
 			time: { type: 'f' , value: time},
 			resolution: {type: 'v2', value: new THREE.Vector2(w,h)},
 			texture: {type: 't', value: rt1},
-			texture2: {type: 't', value: camTex}
+			texture2: {type: 't', value: camTex},
+			mouseX: {type: 'f', value: mouseX},
+			mouseY: {type: 'f', value: mouseY}
 		},
 		vertexShader: document.getElementById("vs").textContent,
 		fragmentShader: document.getElementById("colorFs").textContent
