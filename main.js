@@ -55,7 +55,7 @@ function initCanvasTex(){
 	canvas = document.createElement("canvas");
 	canvas.width = w;
 	canvas.height = h;
-	sliceSize = 75;
+	sliceSize = 25;
 	// document.body.appendChild(canvas);
 	// canvas.style['z-index'] = -1;
 	ctx = canvas.getContext("2d");
@@ -63,7 +63,9 @@ function initCanvasTex(){
 	image.onload = function (){
 		ctx.drawImage(image, 0, 0);
 	}
-	image.src = "img/rb-grid.jpg";
+	// image.src = "img/rb-grid.jpg";
+	image.src = "img/rgblcd.png";
+
 
     tex = new THREE.Texture(canvas);
     tex.needsUpdate = true;

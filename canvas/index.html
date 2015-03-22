@@ -1,0 +1,760 @@
+<html>
+<head>
+	<title>frame differencing</title>
+	<style>
+		body{
+			margin: 0;
+      /*cursor:none;*/
+		}
+	</style>
+</head>
+<body>
+<script id="fs" type="x-fragment/x-shader">
+uniform sampler2D texture; 
+uniform float time; // seconds
+varying vec2 vUv;
+uniform vec2 resolution;
+
+void main() {
+    gl_FragColor = texture2D(texture, vUv);
+}
+</script>
+<script id="vs" type="x-shader/x-vertex">
+
+    varying vec2 vUv;
+    uniform float time;
+    void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+    }
+</script>
+<script id="diffFs">
+uniform sampler2D texture;
+uniform sampler2D texture2;
+uniform sampler2D texture3;
+varying vec2 vUv;
+
+void main() {
+  vec4 tex0 = texture2D(texture, vUv);
+  vec4 tex1 = texture2D(texture2, vUv);
+  vec4 tex2 = texture2D(texture3, vUv);
+
+  vec4 fc = (tex2 - tex1);
+  float avg = dot(tex2.rgb - tex1.rgb, vec3(1.0))/3.0;
+  // fc = avg <= 0.01  ? fc : 1.0-fc;
+  vec4 add = (fc + tex0);
+  gl_FragColor = (fc);//mod(add,tex2.r);
+  // gl_FragColor = smoothstep(tex2,tex0,mod(add,tex2.r));
+}
+</script>
+<script type="x-shader/x-fragment" id="fbFs">
+varying vec2 vUv;
+uniform sampler2D texture;
+uniform sampler2D texture2;
+
+
+void main(){
+
+    vec2 tc = vUv;
+    vec4 look = texture2D(texture,tc);//sample repos texture
+    vec2 offs = vec2(look.y-look.x,look.w-look.z)*0.0005;
+    vec2 coord = offs+tc;  //relative coordinates
+    
+    vec4 repos = texture2D(texture, coord);
+    
+    gl_FragColor = repos;    
+} 
+
+</script>
+<script id="flowFs">
+   
+    uniform vec2 resolution;
+    uniform float time;
+    uniform sampler2D texture;
+    varying vec2 vUv;
+    uniform float mouseX;
+    uniform float mouseY;
+
+    void main( void ){
+      vec2 p = gl_FragCoord.xy / resolution.xy;
+      
+      // vec2 uv = p*0.15 + 0.25;
+      vec2 uv = vUv;
+      // vec2 uv = vUv*0.05 + vec2(0.62, 0.57);
+      
+      vec2 e = 1.0/resolution.xy;
+      
+      
+       float am1 = 0.5*sin( time );
+      // float am1 = 3.333;
+       float am2 = 0.5*cos( time );
+      // float am2 = 10.0;
+      
+      for( int i=0; i<25; i++ ){
+        float h  = dot( texture2D(texture, uv             ).xyz, vec3(0.333) );
+        float h1 = dot( texture2D(texture, uv+vec2(e.x,mouseX)).xyz, vec3(0.333) );
+        float h2 = dot( texture2D(texture, uv+vec2(mouseY,e.y)).xyz, vec3(0.333) );
+            // gradient
+        vec2 g = 0.00075*vec2( (h1-h), (h2-h) )/e;
+            // isoline    
+        // vec2 f = g.yx*vec2(-1.0,1.0);
+        vec2 f = g.yx*vec2(10.0*mouseX, 10.0*mouseY);
+        
+        g = mix( g, f, 0.5 );
+        
+        uv -= 0.000075*g;
+      }
+      
+      vec3 col = texture2D(texture, uv).xyz;
+      
+        col *= 2.0;
+        
+      gl_FragColor = vec4(col, 1.0);
+    }
+</script>
+<script id="chromaFs">
+    uniform sampler2D texture;
+    uniform float time; // seconds
+    varying vec2 vUv;
+    uniform vec2 resolution;
+    uniform float mouseX;
+    uniform float mouseY;
+
+    void main(void) {
+      float   centerBuffer    = 0.0,
+      vignetteStrength  = 0.0,
+      aberrationStrength  = 1.2;
+      
+      float   chrDist,
+      vigDist;
+      
+      vec2 uv = vUv;
+      
+      //calculate how far each pixel is from the center of the screen
+      vec2 vecDist = uv - ( 0.5 , 0.5 );
+      chrDist = vigDist = length( vecDist );
+      
+      //modify the distance from the center, so that only the edges are affected
+      chrDist -= centerBuffer;
+      if( chrDist < 0.0 ) chrDist = 0.0;
+      
+      //distort the UVs
+      vec2 uvR = uv * ( 1.0 + chrDist * 0.02 * aberrationStrength ),
+      uvB = uv * ( 1.0 - chrDist * 0.02 * aberrationStrength );
+      
+      //get the individual channels using the modified UVs
+      vec4 c;
+      
+      c.x = texture2D( texture , uvR ).x;
+      c.y = texture2D( texture , uv ).y;
+      c.z = texture2D( texture , uvB ).z;
+      
+      //apply vignette
+      c *= 1.0 - vigDist* vignetteStrength;
+      
+      gl_FragColor = c;
+    }
+</script>
+  <script id="chromaFs2">
+    uniform sampler2D texture;
+    uniform float time; // seconds
+    varying vec2 vUv;
+    uniform vec2 resolution;
+    uniform float mouseX;
+    uniform float mouseY;
+//note: http://glsl.heroku.com/e#3290.7
+// copied from Little Grasshopper
+// Given a vec2 in [-1,+1], generate a texture coord in [0,+1]
+vec2 barrelDistortion( vec2 p, vec2 amt )
+{
+    p = 2.0*p-1.0;
+    //float BarrelPower = 1.125;
+    const float maxBarrelPower = 3.0;
+    float theta  = atan(p.y, p.x);
+    float radius = length(p);
+    radius = pow(radius, 1.0 + maxBarrelPower * amt.x);
+    p.x = radius * cos(theta);
+    p.y = radius * sin(theta);
+
+    return 0.5 * ( p + 1.0 );
+}
+
+
+float sat( float t )
+{
+  return clamp( t, 0.0, 1.0 );
+}
+
+float linterp( float t ) {
+  return sat( 1.0 - abs( 2.0*t - 1.0 ) );
+}
+
+float remap( float t, float a, float b ) {
+  return sat( (t - a) / (b - a) );
+}
+
+vec3 spectrum_offset( float t ) {
+  vec3 ret;
+  float lo = step(t,0.5);
+  float hi = 1.0-lo;
+  float w = linterp( remap( t, 1.0/6.0, 5.0/6.0 ) );
+  ret = vec3(lo,1.0,hi) * vec3(1.0-w, w, 1.0-w);
+
+  return pow( ret, vec3(1.0/2.2) );
+}
+
+float nrand( vec2 n )
+{
+  return fract(sin(dot(n.xy, vec2(12.9898, 78.233)))* 43758.5453);
+}
+
+const int num_iter = 16;
+const float reci_num_iter_f = 1.0 / float(num_iter);
+const float gamma = 1600.0;
+
+vec3 lin2srgb( vec3 c )
+{
+    return pow( c, vec3(gamma) );
+}
+vec3 srgb2lin( vec3 c )
+{
+    return pow( c, vec3(1.0/gamma));
+}
+
+
+void main()
+{ 
+  vec2 uv = vUv;
+    
+    const float MAX_DIST_PX = 160.0;
+    float max_distort_px = MAX_DIST_PX * (1.0-mouseX/resolution.x);
+  vec2 max_distort = vec2(max_distort_px) / resolution.xy;
+
+    vec2 oversiz = barrelDistortion( vec2(1,1), max_distort );
+    uv = 2.0 * uv - 1.0;
+  uv = uv / (oversiz*oversiz);
+  uv = 0.5 * uv + 0.5;
+    
+  vec3 sumcol = vec3(0.0);
+  vec3 sumw = vec3(0.0);
+    float rnd = nrand( uv + fract(time) );
+  for ( int i=0; i<num_iter;++i )
+  {
+    float t = (float(i)+rnd) * reci_num_iter_f;
+    vec3 w = spectrum_offset( t );
+    sumw += w;
+    sumcol += w * srgb2lin(texture2D( texture, barrelDistortion(uv, max_distort*t ) ).rgb);
+  }
+    
+    sumcol.rgb /= sumw;
+  
+    vec3 outcol = lin2srgb(sumcol.rgb);
+    outcol += rnd/255.0;
+    
+  gl_FragColor = vec4( outcol, 1.0);
+}
+</script>
+<script id="blurFrag" type="x-shader/x-fragment">
+uniform sampler2D texture;
+uniform vec2 resolution;
+uniform float mouseX;
+uniform float mouseY;
+
+varying vec2 vUv;
+
+void main() {
+  float step_w = 1.0/resolution.x;
+  float step_h = 1.0/resolution.y;
+  vec2 tc = vUv;
+  vec4 input0 = texture2D(texture,tc);
+   
+  vec2 x1 = vec2(step_w, 0.0);
+  vec2 y1 = vec2(0.0, step_h);
+    
+  input0 += texture2D(texture, tc+x1); // right
+  input0 += texture2D(texture, tc-x1); // left
+  input0 += texture2D(texture, tc+y1); // top
+  input0 += texture2D(texture, tc-y1); // bottom
+
+  input0 *=0.2;
+
+  gl_FragColor = input0;
+}
+</script>
+<script id="sharpenFrag" type="x-shader/x-fragment">
+uniform sampler2D texture;
+uniform vec2 resolution;
+uniform float mouseX;
+uniform float mouseY;
+
+varying vec2 vUv;
+float kernel[9];
+vec2 offset[9];
+void main() {
+  float step_w = 1.0/resolution.x;
+  float step_h = 1.0/resolution.y;
+  vec2 tc = vUv;
+  vec4 input0 = texture2D(texture,tc);
+   
+  // kernel[0] = -2.0; kernel[1] = -1.0; kernel[2] = 0.0;
+  // kernel[3] = -1.0; kernel[4] = 1.0; kernel[5] = 1.0;
+  // kernel[6] = 0.0; kernel[7] = 1.0; kernel[8] = 2.0; 
+  kernel[0] = -1.0; kernel[1] = -1.0; kernel[2] = -1.0;
+  kernel[3] = -1.0; kernel[4] = 8.0; kernel[5] = -1.0;
+  kernel[6] = -1.0; kernel[7] = -1.0; kernel[8] = -1.0; 
+
+
+  offset[0] = vec2(-step_w, -step_h);
+  offset[1] = vec2(0.0, -step_h);
+  offset[2] = vec2(step_w, -step_h);
+  offset[3] = vec2(-step_w, 0.0);
+  offset[4] = vec2(0.0, 0.0);
+  offset[5] = vec2(step_w, 0.0);
+  offset[6] = vec2(-step_w, step_h);
+  offset[7] = vec2(0.0, step_h);
+  offset[8] = vec2(step_w, step_h);
+    
+  input0 += texture2D(texture, tc + offset[0]) * kernel[0];
+  input0 += texture2D(texture, tc + offset[1]) * kernel[1];
+  input0 += texture2D(texture, tc + offset[2]) * kernel[2];
+  input0 += texture2D(texture, tc + offset[3]) * kernel[3];
+  input0 += texture2D(texture, tc + offset[4]) * kernel[4];
+  input0 += texture2D(texture, tc + offset[5]) * kernel[5];
+  input0 += texture2D(texture, tc + offset[6]) * kernel[6];
+  input0 += texture2D(texture, tc + offset[7]) * kernel[7];
+  input0 += texture2D(texture, tc + offset[8]) * kernel[8];
+
+
+  // input0 *=0.2;
+  float kernelWeight = kernel[0] + kernel[2] + kernel[3] + kernel[4] + kernel[5] + kernel[6] + kernel[7] + kernel[8]; 
+
+  if (kernelWeight <= 0.0) {
+     kernelWeight = 1.0;
+   }
+  gl_FragColor = vec4((input0/kernelWeight).rgb, 1.0);
+}
+</script>
+<script id="embossFrag" type="x-shader/x-fragment">
+uniform sampler2D texture;
+uniform vec2 resolution;
+uniform float mouseX;
+uniform float mouseY;
+
+varying vec2 vUv;
+float kernel[9];
+vec2 offset[9];
+void main() {
+  float step_w = 1.0/resolution.x;
+  float step_h = 1.0/resolution.y;
+  vec2 tc = vUv;
+  vec4 input0 = texture2D(texture,tc);
+   
+  kernel[0] = -2.0; kernel[1] = -1.0; kernel[2] = 0.0;
+  kernel[3] = -1.0; kernel[4] = 1.0; kernel[5] = 1.0;
+  kernel[6] = 0.0; kernel[7] = 1.0; kernel[8] = 2.0; 
+  // kernel[0] = -1.0; kernel[1] = -1.0; kernel[2] = -1.0;
+  // kernel[3] = -1.0; kernel[4] = 8.0; kernel[5] = -1.0;
+  // kernel[6] = -1.0; kernel[7] = -1.0; kernel[8] = -1.0; 
+
+
+  offset[0] = vec2(-step_w, -step_h);
+  offset[1] = vec2(0.0, -step_h);
+  offset[2] = vec2(step_w, -step_h);
+  offset[3] = vec2(-step_w, 0.0);
+  offset[4] = vec2(0.0, 0.0);
+  offset[5] = vec2(step_w, 0.0);
+  offset[6] = vec2(-step_w, step_h);
+  offset[7] = vec2(0.0, step_h);
+  offset[8] = vec2(step_w, step_h);
+    
+  input0 += texture2D(texture, tc + offset[0]) * kernel[0];
+  input0 += texture2D(texture, tc + offset[1]) * kernel[1];
+  input0 += texture2D(texture, tc + offset[2]) * kernel[2];
+  input0 += texture2D(texture, tc + offset[3]) * kernel[3];
+  input0 += texture2D(texture, tc + offset[4]) * kernel[4];
+  input0 += texture2D(texture, tc + offset[5]) * kernel[5];
+  input0 += texture2D(texture, tc + offset[6]) * kernel[6];
+  input0 += texture2D(texture, tc + offset[7]) * kernel[7];
+  input0 += texture2D(texture, tc + offset[8]) * kernel[8];
+
+
+  // input0 *=0.2;
+  float kernelWeight = kernel[0] + kernel[2] + kernel[3] + kernel[4] + kernel[5] + kernel[6] + kernel[7] + kernel[8]; 
+
+  if (kernelWeight <= 0.0) {
+     kernelWeight = 1.0;
+   }
+  gl_FragColor = vec4((input0/kernelWeight).rgb, 1.0);
+}
+</script>
+<script id="colorFs">
+uniform sampler2D texture;
+varying vec2 vUv;
+
+vec3 rainbow(float h) {
+  h = mod(mod(h, 1.0) + 1.0, 1.0);
+  float h6 = h * 6.0;
+  float r = clamp(h6 - 4.0, 0.0, 1.0) +
+    clamp(2.0 - h6, 0.0, 1.0);
+  float g = h6 < 2.0
+    ? clamp(h6, 0.0, 1.0)
+    : clamp(4.0 - h6, 0.0, 1.0);
+  float b = h6 < 4.0
+    ? clamp(h6 - 2.0, 0.0, 1.0)
+    : clamp(6.0 - h6, 0.0, 1.0);
+  return vec3(r, g, b);
+}
+
+vec3 rgb2hsv(vec3 c)
+{
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(( (q.z + (q.w - q.y) / (6.0 * d + e))) ), d / (q.x + e), q.x);
+}
+
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+
+void main(){
+
+  vec4 tex0 = texture2D(texture, vUv);
+  vec3 hsv = rgb2hsv(tex0.rgb);
+
+  hsv.r += 0.01;
+  hsv.r = mod(hsv.r, 1.0);
+  hsv.g *= 1.001;
+  hsv.g = mod(hsv.g, 1.0);
+  vec3 rgb = hsv2rgb(hsv); 
+
+  gl_FragColor = vec4(rgb,1.0);
+}
+</script>
+<script type="x-shader/x-fragment" id="flow2">
+ 
+    uniform vec2 resolution;
+    uniform float time;
+    uniform sampler2D texture;
+    varying vec2 vUv;
+    uniform float mouseX;
+    uniform float mouseY;
+
+    void main( void ){
+      vec2 p = gl_FragCoord.xy / resolution.xy;
+      
+      // vec2 uv = p*0.15 + 0.25;
+      vec2 uv = vUv;
+      // vec2 uv = vUv*0.05 + vec2(0.62, 0.57);
+      
+      vec2 e = 1.0/resolution.xy;
+      
+      
+      // float am1 = 0.5 + 0.5*sin( time );
+      float am1 = 0.5 + 0.5*0.927180409;
+      // float am2 = 0.5 + 0.5*cos( time );
+      float am2 = 10.0;
+      
+      for( int i=0; i<20; i++ ){
+        float h  = dot( texture2D(texture, uv*0.99,               -100.0).xyz, vec3(0.333) );
+        float h1 = dot( texture2D(texture, uv+vec2(e.x,mouseX), -100.0).xyz, vec3(0.333) );
+        float h2 = dot( texture2D(texture, uv+vec2(mouseY,e.y), -100.0).xyz, vec3(0.333) );
+            // gradient
+        vec2 g = 0.001*vec2( (h1-h), (h2-h) )/e;
+            // isoline    
+        // vec2 f = g.yx*vec2(-1.0,1.0);
+        vec2 f = g.yx*vec2(2.0*mouseX, 2.0*mouseY);
+        
+        g = mix( g, f, am1 );
+        
+        uv += 0.0001*g*am2;
+      }
+      
+      vec3 col = texture2D(texture, uv).xyz;
+      
+        // col *= 1.001;
+        
+      gl_FragColor = vec4(col, 1.0);
+    }
+</script>
+<script id="syrup-fs" type="x-fragment/x-shader">
+  uniform sampler2D texture; 
+  uniform float time; // seconds
+  varying vec2 vUv;
+  uniform vec2 resolution;
+  float luminanceThreshold = 0.5; // 0.2
+  float colorAmplification = 1.05; // 4.0
+  float effectCoverage = 1.0; // 0.5
+  mat2 m = mat2( 0.10,  4.60, -3.60,  0.80 );
+  float hash( float n )
+  {
+      return fract(sin(n)*43758.5453);
+  }
+
+  float noise( in vec2 x )
+  {
+      vec2 p = floor(x+sqrt(time/1.));
+      vec2 f = fract(x+sqrt(time/1.));
+      f = f*f*(3.0-2.0*f);
+      float n = p.x + p.y*57.0;
+      float res = mix(mix( hash(n+  0.0), hash(n+  1.0),f.x), mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y);
+      return res;
+  }
+  float fbm( vec2 p )
+  {
+      float f = 0.0;
+      f += 0.90000*noise( p ); p = m*p*2.02;
+      f += 0.25000*noise( p ); p = m*p*2.03;
+      f += 0.12500*noise( p ); p = m*p*2.01;
+      f += 0.06250*noise( p ); p = m*p*2.04;
+      f += 0.03125*noise( p );
+      return f/0.984375;
+  }
+  void main() {
+    vec4 finalColor;
+    // Set effectCoverage to 1.0 for normal use.  
+
+      vec2 uv;           
+      uv.x = 0.4*sin(time*500.0);                                 
+      uv.y = 0.4*cos(time*500.0);                                 
+      vec3 c = texture2D(texture, vUv).rgb;
+    
+      float luma = dot(vec3(0.30, 0.59, 0.11), c);
+      if (luma < luminanceThreshold)
+        c *= colorAmplification; 
+      // vec3 visionColor = vec3((gl_FragCoord.xy/res.xy)+1.0, 0.5*sin(time));
+      // visionColor *= vec3(0.1, 0.95, 0.2);
+      // visionColor *= vec3((gl_FragCoord.xy/res.xy)-2.0, 0.7*cos(time));
+      finalColor.rgb = (c); //* visionColor;
+
+    float stepSize = 0.02;
+    float lum = length(texture2D(texture, vUv).rgb);
+     
+
+    // gl_FragColor = vec4(0.125,0.125,0.125,0.0);
+    // gl_FragColor = vec4(0.);
+    gl_FragColor = finalColor;
+    // gl_FragColor = vec4(0.0,0.2, 0.0, 1.0);
+     
+    if (lum < 1.00) {
+        if (mod(gl_FragCoord.x + gl_FragCoord.y, stepSize) == 0.0) {
+            gl_FragColor = finalColor;
+        }
+    }
+     
+    if (lum < 0.75) {
+        if (mod(gl_FragCoord.x - gl_FragCoord.y, stepSize) == 0.0) {
+            gl_FragColor = finalColor;
+        }
+    }
+     
+    if (lum < 0.50) {
+        if (mod(gl_FragCoord.x + gl_FragCoord.y, stepSize) == 0.0) {
+            gl_FragColor = finalColor;
+        }
+    }
+     
+    if (lum < 0.3) {
+        if (mod(gl_FragCoord.x - gl_FragCoord.y, stepSize) == 0.0) {
+
+            gl_FragColor = finalColor;
+        }
+    }
+    if (lum < 0.125) {
+        if (mod(gl_FragCoord.x - gl_FragCoord.y, stepSize) == 0.0) {
+            gl_FragColor = finalColor;
+        }
+    }
+  }
+</script>
+
+<script id="syrup-fs-2" type="x-fragment/x-shader">
+  uniform sampler2D texture; 
+  uniform float time; // seconds
+  varying vec2 vUv;
+  uniform vec2 resolution;
+  uniform float mouseX;
+  uniform float mouseY;
+
+  float kernel[9];
+  float kernel2[9];
+  float kernel3[9];
+
+
+  vec2 offset[9];
+  vec2 offset2[9];
+  vec2 offset3[9];
+
+
+  uniform float step_w;
+  uniform float step_h;
+
+  mat2 m = mat2( 0.80,  0.60, -0.60,  0.80 );
+
+  float hash( float n )
+  {
+      return fract(sin(n)*43758.5453);
+  }
+
+  float noise( in vec2 x )
+  {
+      vec2 p = floor(x+sqrt(time/1.));
+      vec2 f = fract(x+sqrt(time/1.));
+      f = f*f*(3.0-2.0*f);
+      float n = p.x + p.y*57.0;
+      float res = mix(mix( hash(n+  0.0), hash(n+  1.0),f.x), mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y);
+      return res;
+  }
+  float fbm( vec2 p )
+  {
+      float f = 0.0;
+      f += 0.90000*noise( p ); p = m*p*2.02;
+      f += 0.25000*noise( p ); p = m*p*2.03;
+      f += 0.12500*noise( p ); p = m*p*2.01;
+      f += 0.06250*noise( p ); p = m*p*2.04;
+      f += 0.03125*noise( p );
+      return f/0.984375;
+  }
+  void main() {
+
+      offset[0] = vec2(-step_w, -step_h);
+      offset[1] = vec2(0.0, -step_h);
+      offset[2] = vec2(step_w, -step_h);
+      offset[3] = vec2(-step_w, 0.0);
+      offset[4] = vec2(0.0, 0.0);
+      offset[5] = vec2(step_w, 0.0);
+      offset[6] = vec2(-step_w, step_h);
+      offset[7] = vec2(0.0, step_h);
+      offset[8] = vec2(step_w, step_h);
+      
+      vec2 step2 = 1.0/(resolution*mouseX);
+      offset2[0] = vec2(-step2.x, -step2.y);
+      offset2[1] = vec2(0.0, -step2.y);
+      offset2[2] = vec2(step2.x, -step2.y);
+      offset2[3] = vec2(-step2.x, 0.0);
+      offset2[4] = vec2(0.0, 0.0);
+      offset2[5] = vec2(step2.x, 0.0);
+      offset2[6] = vec2(-step2.x, step2.y);
+      offset2[7] = vec2(0.0, step2.y);
+      offset2[8] = vec2(step2.x, step2.y);
+
+      vec2 step3 = 1.0/(resolution*mouseY);
+      offset3[0] = vec2(-step3.x, -step3.y);
+      offset3[1] = vec2(0.0, -step3.y);
+      offset3[2] = vec2(step3.x, -step3.y);
+      offset3[3] = vec2(-step3.x, 0.0);
+      offset3[4] = vec2(0.0, 0.0);
+      offset3[5] = vec2(step3.x, 0.0);
+      offset3[6] = vec2(-step3.x, step3.y);
+      offset3[7] = vec2(0.0, step3.y);
+      offset3[8] = vec2(step3.x, step3.y);
+
+
+
+      kernel[0] = 0.0; kernel[1] = -1.0; kernel[2] = 0.0;
+      kernel[3] = -1.0; kernel[4] = 7.0; kernel[5] = -1.0;
+      kernel[6] = 0.0; kernel[7] = -1.0; kernel[8] = 0.2;
+
+      // kernel[0] = 0.0; kernel[1] = -0.2; kernel[2] = 0.0;
+      // kernel[3] = -0.2; kernel[4] = 1.0; kernel[5] = -0.2;
+      // kernel[6] = 0.0; kernel[7] = -0.2; kernel[8] = 0.0;
+      kernel2[0] = -1.0; kernel2[1] = -1.0; kernel2[2] = -1.0;
+      kernel2[3] = -1.0; kernel2[4] = 16.0; kernel2[5] = -1.0;
+      kernel2[6] = -1.0; kernel2[7] = -1.0; kernel2[8] = -1.0;
+
+      kernel3[0] = 1.0; kernel3[1] = 2.0; kernel3[2] = 1.0;
+      kernel3[3] = 2.0; kernel3[4] = 4.0; kernel3[5] = 2.0;
+      kernel3[6] = 1.0; kernel3[7] = 2.0; kernel3[8] = 1.0;
+      
+      // vec4 sum = vec4(0.0);
+      vec4 sum = texture2D(texture, vUv)*0.92;
+      //int i;
+      // for (int i = 0; i < 9; i++) {
+      //     vec4 color = texture2D(texture, vUv + offset[i]);
+      //     sum += color * kernel[i];
+      //     // sum += color * kernel2[i];
+      // }
+
+      sum += texture2D(texture, vUv + offset[0]) * kernel[0];
+      sum += texture2D(texture, vUv + offset[1]) * kernel[1];
+      sum += texture2D(texture, vUv + offset[2]) * kernel[2];
+      sum += texture2D(texture, vUv + offset[3]) * kernel[3];
+      sum += texture2D(texture, vUv + offset[4]) * kernel[4];
+      sum += texture2D(texture, vUv + offset[5]) * kernel[5];
+      sum += texture2D(texture, vUv + offset[6]) * kernel[6];
+      sum += texture2D(texture, vUv + offset[7]) * kernel[7];
+      sum += texture2D(texture, vUv + offset[8]) * kernel[8];
+      sum/=9.0;
+      sum += texture2D(texture, vUv + offset2[0]) * kernel2[0];
+      sum += texture2D(texture, vUv + offset2[1]) * kernel2[1];
+      sum += texture2D(texture, vUv + offset2[2]) * kernel2[2];
+      sum += texture2D(texture, vUv + offset2[3]) * kernel2[3];
+      sum += texture2D(texture, vUv + offset2[4]) * kernel2[4];
+      sum += texture2D(texture, vUv + offset2[5]) * kernel2[5];
+      sum += texture2D(texture, vUv + vec2(fbm(offset2[6]))) * kernel2[6];
+      // sum += texture2D(texture, vUv + offset2[7]) * kernel2[7];
+      sum += texture2D(texture, vUv + offset2[8]) * kernel2[8];
+      // sum /= 9.0;
+      sum += texture2D(texture, vUv + offset3[0]) * kernel3[0];
+      sum += texture2D(texture, vUv + offset3[1]) * kernel3[1];
+      sum += texture2D(texture, vUv + offset3[2]) * kernel3[2];
+      sum += texture2D(texture, vUv + offset3[3]) * kernel3[3];
+      sum += texture2D(texture, vUv + offset3[4]) * kernel3[4];
+      sum += texture2D(texture, vUv + offset3[5]) * kernel3[5];
+      sum += texture2D(texture, vUv + offset3[6]) * kernel3[6];
+      sum += texture2D(texture, vUv + offset3[7]) * kernel3[7];
+      sum += texture2D(texture, vUv + offset3[8]) * kernel3[8];
+      // sum /= 9.0;
+
+
+
+
+      float kernelWeight =
+       kernel[0] +
+      kernel2[0] +
+      kernel3[0] +
+       kernel[1] +
+      kernel2[1] +
+      kernel3[1] +
+       kernel[2] +
+      kernel2[2] +
+      kernel3[2] +
+       kernel[3] +
+      kernel2[3] +
+      kernel3[3] +
+       kernel[4] +
+      kernel2[4] +
+      kernel3[4] +
+       kernel[5] +
+      kernel2[5] +
+      kernel3[5] +
+       kernel[6] +
+      kernel2[6] +
+      kernel3[6] +
+       kernel[7] +
+      kernel2[7] +
+      kernel3[7] +
+       kernel[8];
+      kernel2[8] +
+      kernel3[8];
+     if (kernelWeight <= 0.0) {
+       kernelWeight = 1.0;
+     }
+    gl_FragColor = vec4((sum/kernelWeight).rgb, 1.0);
+  }
+</script>
+<script src="../three.min.js"></script>
+<script src="../BinaryLoader.js"></script>
+<script src="../Detector.js"></script>
+<script src="../OrbitControls.js"></script>
+<script src="../dat.gui.min.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

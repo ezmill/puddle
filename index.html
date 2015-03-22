@@ -123,7 +123,7 @@ void main(){
     void main(void) {
       float   centerBuffer    = 0.0,
       vignetteStrength  = 0.0,
-      aberrationStrength  = 0.6;
+      aberrationStrength  = 1.2;
       
       float   chrDist,
       vigDist;
@@ -463,7 +463,7 @@ void main(){
       float am2 = 10.0;
       
       for( int i=0; i<20; i++ ){
-        float h  = dot( texture2D(texture, uv*0.999,               -100.0).xyz, vec3(0.333) );
+        float h  = dot( texture2D(texture, uv*0.99,               -100.0).xyz, vec3(0.333) );
         float h1 = dot( texture2D(texture, uv+vec2(e.x,mouseX), -100.0).xyz, vec3(0.333) );
         float h2 = dot( texture2D(texture, uv+vec2(mouseY,e.y), -100.0).xyz, vec3(0.333) );
             // gradient
