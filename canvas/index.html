@@ -43,7 +43,7 @@ void main() {
   float avg = dot(tex2.rgb - tex1.rgb, vec3(1.0))/3.0;
   // fc = avg <= 0.01  ? fc : 1.0-fc;
   vec4 add = (fc + tex0);
-  gl_FragColor = (fc);//mod(add,tex2.r);
+  gl_FragColor = (add);//mod(add,tex2.r);
   // gl_FragColor = smoothstep(tex2,tex0,mod(add,tex2.r));
 }
 </script>
@@ -432,7 +432,7 @@ void main(){
   hsv.r += 0.01;
   hsv.r = mod(hsv.r, 1.0);
   hsv.g *= 1.001;
-  hsv.g = mod(hsv.g, 1.0);
+  // hsv.g = mod(hsv.g, 1.0);
   vec3 rgb = hsv2rgb(hsv); 
 
   gl_FragColor = vec4(rgb,1.0);
