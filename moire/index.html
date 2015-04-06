@@ -1,14 +1,45 @@
 <html>
 <head>
-	<title>frame differencing</title>
-	<style>
-		body{
-			margin: 0;
-      /*cursor:none;*/
-		}
-	</style>
+	<title>moire</title>
+  <meta property="og:image" content="http://iridescentpuddle.com/moire/fb.png">
+  <meta property="og:title" content="Moire">
+  <meta property="og:description" content="Moire by Ezra Miller. Made with WebGL.">
+  <meta property="og:url" content="http://iridescentpuddle.com/moire">
+  <meta property="author" content="Ezra Miller">
+  <link href='http://fonts.googleapis.com/css?family=Cardo:400italic' rel='stylesheet' type='text/css'>
+  <style>
+    body {
+      margin: 0;
+    }
+    .info {
+      font-family: "Cardo";
+      font-style: italic;
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      margin: 15px;
+      font-size: 20px;
+      color: rgba(255,255,255,0.5);
+    }
+    a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255,255,255,0.5);
+
+    }
+    a:hover {
+      -webkit-transition: all 500ms ease;
+      -moz-transition: all 500ms ease;
+      -ms-transition: all 500ms ease;
+      -o-transition: all 500ms ease;
+      transition: all 500ms ease;
+      border-bottom: 1px solid rgba(255,255,255,1.0);
+      color: rgba(255,255,255,1.0);
+    }
+  </style>
 </head>
 <body>
+<div class="info">by <a target="_blank" href="http://ezramiller.biz/">Ezra Miller</a></div>
 <script id="fs" type="x-fragment/x-shader">
 uniform sampler2D texture; 
 uniform float time; // seconds
