@@ -324,6 +324,12 @@ function onDocumentTouchStart( event ) {
         event.preventDefault();
         mouseX = map(event.touches[ 0 ].pageX, window.innerWidth, -1.0,1.0);
         mouseY = map(event.touches[ 0 ].pageY, window.innerHeight, -1.0,1.0);
+        materialFB2.uniforms.mouseX.value = mouseX;
+	    material1.uniforms.mouseX.value = mouseX;
+	    materialBump.uniforms.mouseX.value = mouseX;
+	    materialFB2.uniforms.mouseY.value = mouseY;
+	    material1.uniforms.mouseY.value = mouseY;
+	    materialBump.uniforms.mouseY.value = mouseY;
     }
 }
 
@@ -338,6 +344,12 @@ function onDocumentTouchMove( event ) {
           fbMaterial.fbos[i].material.uniforms.mouse.value = new THREE.Vector2(mx, my);
         }
         */
+        materialFB2.uniforms.mouseX.value = mouseX;
+	    material1.uniforms.mouseX.value = mouseX;
+	    materialBump.uniforms.mouseX.value = mouseX;
+	    materialFB2.uniforms.mouseY.value = mouseY;
+	    material1.uniforms.mouseY.value = mouseY;
+	    materialBump.uniforms.mouseY.value = mouseY;
     }
 }
     
