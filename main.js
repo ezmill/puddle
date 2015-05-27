@@ -233,7 +233,7 @@ function initFrameDifferencing(){
 			mouseY: {type: 'f', value: mouseY}
 		},
 		vertexShader: document.getElementById("vs").textContent,
-		fragmentShader: document.getElementById("bumpFs").textContent
+		fragmentShader: document.getElementById("fs").textContent
 	});
 	meshBump = new THREE.Mesh(planeGeometry, materialBump);
 	sceneBump.add(meshBump);
